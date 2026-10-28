@@ -56,13 +56,13 @@ function seed(){
   return{school:{name:'SD NEGERI AMBELANG',npsn:'40200355',level:'SD',address:'Jl. Montolutusan, Desa Ambelang, Kabupaten Banggai Kepulauan',email:'sdnambelang@gmail.com',phone:'082290197118',head:'Rustina I. Balahama, S.Pd',year:'2026/2027'},classes,teachers:[],students:[],att:{}};
 }
 const nameCmp=(a,b)=>String(a||'').localeCompare(String(b||''),'id',{sensitivity:'base',numeric:true});
-// Urutan baku: kelas 1→6; murid per kelas lalu abjad nama; guru menurut kelas yang diwalikan lalu abjad nama.
+// Urutan baku: kelas 1→6; murid per kelas lalu abjad nama; guru menurut kelas yang diwalikan (urutan input dipertahankan).
 function order(d){
   const cl=[...d.classes].sort((a,b)=>(gradeOf(a.name)||99)-(gradeOf(b.name)||99)||nameCmp(a.name,b.name));
   const rk={};cl.forEach((k,i)=>{rk[k.id]=i});
   const st=[...d.students].sort((a,b)=>(rk[a.classId]??999)-(rk[b.classId]??999)||nameCmp(a.name,b.name)||nameCmp(a.nis,b.nis));
   const tr={};d.classes.forEach(k=>{if(k.teacherId&&(tr[k.teacherId]===undefined||rk[k.id]<tr[k.teacherId]))tr[k.teacherId]=rk[k.id]});
-  const th=[...d.teachers].sort((a,b)=>(tr[a.id]??999)-(tr[b.id]??999)||nameCmp(a.name,b.name));
+  const th=[...d.teachers].sort((a,b)=>(tr[a.id]??999)-(tr[b.id]??999));
   const same=(x,y)=>x.length===y.length&&x.every((v,i)=>v===y[i]);
   return same(cl,d.classes)&&same(st,d.students)&&same(th,d.teachers)?d:{...d,classes:cl,students:st,teachers:th}}
 function mig(d){d.wa=d.wa||{};d.jam=d.jam||{};d.school.jamMasuk=d.school.jamMasuk||'07:30';d.school.faceTh=d.school.faceTh||'0.5';d.school.jamPulang=d.school.jamPulang||'12:00';d.school.jamPulang12=d.school.jamPulang12||'10:00';delete d.admin;d.teachers.forEach(t=>{delete t.pass;delete t.user});return order(d)}
