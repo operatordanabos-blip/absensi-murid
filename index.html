@@ -55,7 +55,17 @@ function seed(){
   while(k<25){const w=d.getDay();if(w>0&&w<6){const ds=iso(d);students.forEach(s=>{const x=rnd();att[ds+'|'+s.id]=x<.8?'H':x<.87?'T':x<.92?'S':x<.96?'I':'A'});k++}d.setDate(d.getDate()-1)}
   return{school:{name:'SD NEGERI AMBELANG',npsn:'40200355',level:'SD',address:'Jl. Montolutusan, Desa Ambelang, Kabupaten Banggai Kepulauan',email:'sdnambelang@gmail.com',phone:'082290197118',head:'Rustina I. Balahama, S.Pd',year:'2026/2027'},classes,teachers:[],students:[],att:{}};
 }
-function mig(d){d.wa=d.wa||{};d.jam=d.jam||{};d.school.jamMasuk=d.school.jamMasuk||'07:30';d.school.faceTh=d.school.faceTh||'0.5';d.school.jamPulang=d.school.jamPulang||'12:00';d.school.jamPulang12=d.school.jamPulang12||'10:00';delete d.admin;d.teachers.forEach(t=>{delete t.pass;delete t.user});return d}
+const nameCmp=(a,b)=>String(a||'').localeCompare(String(b||''),'id',{sensitivity:'base',numeric:true});
+// Urutan baku: kelas 1→6; murid per kelas lalu abjad nama; guru menurut kelas yang diwalikan lalu abjad nama.
+function order(d){
+  const cl=[...d.classes].sort((a,b)=>(gradeOf(a.name)||99)-(gradeOf(b.name)||99)||nameCmp(a.name,b.name));
+  const rk={};cl.forEach((k,i)=>{rk[k.id]=i});
+  const st=[...d.students].sort((a,b)=>(rk[a.classId]??999)-(rk[b.classId]??999)||nameCmp(a.name,b.name)||nameCmp(a.nis,b.nis));
+  const tr={};d.classes.forEach(k=>{if(k.teacherId&&(tr[k.teacherId]===undefined||rk[k.id]<tr[k.teacherId]))tr[k.teacherId]=rk[k.id]});
+  const th=[...d.teachers].sort((a,b)=>(tr[a.id]??999)-(tr[b.id]??999)||nameCmp(a.name,b.name));
+  const same=(x,y)=>x.length===y.length&&x.every((v,i)=>v===y[i]);
+  return same(cl,d.classes)&&same(st,d.students)&&same(th,d.teachers)?d:{...d,classes:cl,students:st,teachers:th}}
+function mig(d){d.wa=d.wa||{};d.jam=d.jam||{};d.school.jamMasuk=d.school.jamMasuk||'07:30';d.school.faceTh=d.school.faceTh||'0.5';d.school.jamPulang=d.school.jamPulang||'12:00';d.school.jamPulang12=d.school.jamPulang12||'10:00';delete d.admin;d.teachers.forEach(t=>{delete t.pass;delete t.user});return order(d)}
 function embedded(){try{const e=document.getElementById('seed-data');return e?JSON.parse(e.textContent):null}catch(x){return null}}
 function load(){const m=embedded();
   try{if(m&&localStorage.getItem(KEY+'_ex')!==m._ex){localStorage.setItem(KEY+'_ex',m._ex);return mig(m)}}catch(e){if(m)return mig(m)}
@@ -508,7 +518,7 @@ function CloudCard({cloud,toast}){
     {cloud.enabled&&<button className="btn bg-amber-50 text-amber-700" disabled={bz} onClick={push}>{bz?'Mengunggah…':'Unggah data perangkat ini ke cloud (timpa)'}</button>}</div>}
 
 function App(){
-  const [db,setDb]=useState(load);const [auth,setAuth]=useState(null);const [boot,setBoot]=useState(true);const [pg,setPg]=useState('dash');const [open,setOpen]=useState(false);const [msg,setMsg]=useState('');
+  const [db,setDb0]=useState(load);const setDb=f=>setDb0(p=>order(typeof f==='function'?f(p):f));const [auth,setAuth]=useState(null);const [boot,setBoot]=useState(true);const [pg,setPg]=useState('dash');const [open,setOpen]=useState(false);const [msg,setMsg]=useState('');
   useEffect(()=>{try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}},[db]);
   const toast=m=>{setMsg(m);setTimeout(()=>setMsg(''),2500)};
   const save=d=>setDb(d);
