@@ -468,28 +468,39 @@ function useCloud(db,setDb,toast,token){
   const [st,setSt]=useState(url?'connecting':'off');
   const R=useRef({last:{},remote:{},pend:0,dirty:false,failed:false,db,timer:null,ready:false});
   R.current.db=db;
-  const flush=async()=>{const r=R.current;if(!url||!r.ready)return;
-    const cur=toTree(r.db);const out=diff(r.last,cur);if(!Object.keys(out).length)return;
+  const flush=async()=>{const r=R.current;if(!url||!token||!r.ready)return;
+    const cur=toTree(r.db);const out=diff(r.last,cur);
+    Object.keys(out).forEach(k=>{const v=out[k];if(isO(v)&&!Object.keys(v).length)delete out[k]});
+    if(!Object.keys(out).length)return;
     r.pend++;
     try{const res=await fetch(url+'/.json'+Q,{method:'PATCH',body:JSON.stringify(out)});if(!res.ok)throw new Error(res.status);
       r.last=cur;r.failed=false;setSt('online')}
     catch(e){r.failed=true;setSt('error');clearTimeout(r.timer);r.timer=setTimeout(flush,5000)}
     finally{r.pend--;if(!r.pend&&r.dirty&&!r.failed){r.dirty=false;apply()}}};
   const apply=()=>{const r=R.current;
+    if(!r.ready)return;
     if(r.pend){r.dirty=true;return}
     if(Object.keys(diff(r.last,toTree(r.db))).length){r.dirty=true;flush();return}
     const d=mig(fromTree(r.remote));r.last=toTree(d);
     if(Object.keys(diff(toTree(r.db),r.last)).length)setDb(d)};
   const forcePush=async()=>{const r=R.current;if(!url)return false;
     try{const t=toTree(r.db);const res=await fetch(url+'/.json'+Q,{method:'PATCH',body:JSON.stringify(t)});if(!res.ok)throw 0;r.last=t;r.remote=t;r.ready=true;setSt('online');return true}catch(e){setSt('error');return false}};
-  useEffect(()=>{if(!url||!token)return;const r=R.current;let es;
+  useEffect(()=>{const r=R.current;
+    // Logout / belum login: lupakan status sinkron sebelumnya, agar data kosong bawaan tidak dianggap "penghapusan" oleh pengguna.
+    if(!url||!token){r.ready=false;r.last={};r.remote={};r.dirty=false;r.failed=false;clearTimeout(r.timer);clearTimeout(r.deb);return}
+    let es;
     const onData=(path,data,merge)=>{
       const parts=String(path||'/').split('/').filter(Boolean);
       if(merge){Object.keys(data||{}).forEach(k=>{r.remote=setAt(r.remote,[...parts,...k.split('/')],data[k])})}
       else r.remote=parts.length?setAt(r.remote,parts,data):(data||{});
       if(!r.ready){
         if(data===null&&!parts.length){r.ready=true;r.remote={};forcePush().then(ok=>ok&&toast('Data perangkat ini diunggah ke cloud.'))}
-        else{r.ready=true;r.last={};apply();setSt('online');toast('Data tersinkron dari cloud.')}
+        else{
+          const rc=r.remote&&r.remote.students?Object.keys(r.remote.students).length:0,lc=(r.db.students||[]).length;
+          if(lc>0&&rc===0&&confirm('Data murid di cloud KOSONG, tetapi perangkat ini masih menyimpan '+lc+' murid.\n\nOK = unggah data perangkat ini ke cloud (pulihkan).\nBatal = pakai data cloud (kosong).')){
+            r.ready=true;forcePush().then(ok=>ok&&toast('Data perangkat ini diunggah ke cloud.'));return}
+          if(lc>0){try{localStorage.setItem(KEY+'_prasinkron',JSON.stringify(r.db))}catch(e){}}
+          r.ready=true;r.last=toTree(r.db);apply();setSt('online');toast('Data tersinkron dari cloud.')}
         return}
       clearTimeout(r.deb);r.deb=setTimeout(apply,120)};
     try{es=new EventSource(url+'/.json'+Q);
