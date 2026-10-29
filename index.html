@@ -90,7 +90,7 @@ function Login({db,onLogin}){
   return <div className="min-h-screen flex items-center justify-center p-4" style={{background:'linear-gradient(160deg,#0b1437,#16235f)'}}><form onSubmit={go} className="card p-6 w-full max-w-sm space-y-3 text-center"><div className="flex justify-center"><Logo s={96}/></div><h1 className="font-extrabold text-lg leading-tight">{db.school.name}</h1><div className="text-xs text-slate-500">Presensi Murid · Login Guru / Admin</div>
     <input className="inp w-full" type="email" placeholder="Email akun" value={u} onChange={e=>setU(e.target.value)} autoFocus/>
     <PassInput placeholder="Password" value={p} onChange={e=>setP(e.target.value)}/>
-    {err&&<div className="text-red-600 text-sm">{err}</div>}<button className="btn bg-blue-600 text-white w-full justify-center" disabled={bz}>{bz?'Memeriksa...':'Masuk'}</button></form></div>;
+    {err&&<div className="text-red-600 text-sm">{err}</div>}<button className="btn bg-blue-600 text-white w-full justify-center" disabled={bz}>{bz?'Memeriksa...':'Masuk'}</button><div className="text-[10px] text-slate-400">v {APP_VER}</div></form></div>;
 }
 
 // ===================== FACE ID (face-api, berjalan di perangkat) =====================
@@ -423,6 +423,11 @@ function Crud({title,items,fields,cols,onSave,onDel,db,imp,toast,bk,onClear,clea
       <button className="btn bg-blue-600 text-white w-full justify-center">Simpan</button></form></div>}</div>;
 }
 
+function Snap({save,toast}){
+  const [l]=useState(()=>{try{return JSON.parse(localStorage.getItem(KEY+'_snap')||'[]')}catch(e){return[]}});
+  if(!l.length)return null;
+  return <div className="card p-5 space-y-2"><h2 className="font-bold">Salinan otomatis di perangkat ini</h2><div className="text-xs text-slate-500">Dibuat otomatis sekitar tiap 30 menit selama ada data murid. Dipakai bila data tiba-tiba hilang. Memulihkan akan menimpa data sekarang, termasuk di cloud.</div>
+    {l.map((x,i)=><div key={i} className="flex items-center gap-2 text-sm border-b border-slate-100 py-1.5"><span className="flex-1">{new Date(x.t).toLocaleString('id-ID')} · {x.n} murid · {x.a} catatan presensi</span><button className="btn bg-amber-50 text-amber-700" onClick={()=>{if(!confirm('Pulihkan data dari salinan ini? Data sekarang akan ditimpa.'))return;allowMass();save(mig(x.db));toast('Data dipulihkan dari salinan otomatis.')}}>Pulihkan</button></div>)}</div>}
 function Settings({db,save,toast,cloud}){
   const [s,setS]=useState(db.school);const [rs,setRs]=useState(false);
   const exportApp=async()=>{try{
@@ -434,7 +439,7 @@ function Settings({db,save,toast,cloud}){
     const html='<!DOCTYPE html>\n<html lang="id"><head>'+keep+'\n'+st+'</head>\n<body><div id="root"></div>\n<script id="seed-data" type="application/json">'+data+'</'+'script>\n'+src.outerHTML+'</body></html>';
     await saveFile('presensi-sdn-ambelang-data.html',new Blob([html],{type:'text/html'}));toast('Aplikasi beserta data terbaru diunduh.')}catch(e){if(!e||e.code!=='declined')toast('Gagal mengunduh aplikasi.')}};const F=[['name','Nama Sekolah'],['npsn','NPSN'],['level','Jenjang Pendidikan'],['address','Alamat Sekolah'],['email','Email Sekolah'],['phone','Nomor Telepon'],['head','Nama Kepala Sekolah'],['year','Tahun Ajaran (contoh 2026/2027)'],['jamMasuk','Batas jam datang (HH:MM, contoh 07:30)'],['jamPulang12','Jam pulang kelas 1–2 (HH:MM, contoh 10:00)'],['jamPulang','Jam pulang kelas 3–6 (HH:MM, contoh 12:00)'],['faceTh','Ketelitian wajah (0.40–0.60; makin kecil makin ketat, standar 0.50)']];
   return <div className="space-y-4"><h1 className="text-2xl font-extrabold text-slate-800">Pengaturan Sekolah</h1><CloudCard cloud={cloud} toast={toast}/><div className="card p-5 grid md:grid-cols-2 gap-3">{F.map(([k,l])=><Field key={k} l={l}><input className="inp w-full" value={s[k]} onChange={e=>setS({...s,[k]:e.target.value})}/></Field>)}
-    <div className="md:col-span-2 flex gap-2"><button className="btn bg-blue-600 text-white" onClick={()=>{save({...db,school:s});toast('Identitas sekolah tersimpan.')}}>Simpan</button><button className="btn bg-red-50 text-red-600" onClick={()=>{if(rs){save(mig(seed()));toast('Data direset.');setRs(false)}else{setRs(true);toast('Klik sekali lagi untuk konfirmasi reset.')}}}>{rs?'Klik lagi untuk konfirmasi reset':'Reset data demo'}</button><button className="btn bg-slate-100" onClick={async()=>{try{await saveFile('cadangan-presensi-'+TODAY+'.json',new Blob([JSON.stringify(db)],{type:'application/json'}));toast('Cadangan data diunduh.')}catch(e){if(!e||e.code!=='declined')toast('Gagal membuat cadangan.')}}}>Cadangkan data</button><button className="btn bg-blue-600 text-white" onClick={exportApp}>Unduh aplikasi + data</button><label className="btn bg-slate-100">Pulihkan data<input type="file" accept=".json" className="hidden" onChange={async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const j=JSON.parse(await f.text());if(!j.students||!j.teachers||!j.classes||!j.school)throw 0;const m=mig(j);save(m);setS(m.school);toast('Data berhasil dipulihkan.')}catch(err){toast('File cadangan tidak valid.')}}}/></label></div></div></div>;
+    <div className="md:col-span-2 flex gap-2"><button className="btn bg-blue-600 text-white" onClick={()=>{save({...db,school:s});toast('Identitas sekolah tersimpan.')}}>Simpan</button><button className="btn bg-red-50 text-red-600" onClick={()=>{if(rs){allowMass();save(mig(seed()));toast('Data direset.');setRs(false)}else{setRs(true);toast('Klik sekali lagi untuk konfirmasi reset.')}}}>{rs?'Klik lagi untuk konfirmasi reset':'Reset data demo'}</button><button className="btn bg-slate-100" onClick={async()=>{try{await saveFile('cadangan-presensi-'+TODAY+'.json',new Blob([JSON.stringify(db)],{type:'application/json'}));toast('Cadangan data diunduh.')}catch(e){if(!e||e.code!=='declined')toast('Gagal membuat cadangan.')}}}>Cadangkan data</button><button className="btn bg-blue-600 text-white" onClick={exportApp}>Unduh aplikasi + data</button><label className="btn bg-slate-100">Pulihkan data<input type="file" accept=".json" className="hidden" onChange={async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const j=JSON.parse(await f.text());if(!j.students||!j.teachers||!j.classes||!j.school)throw 0;const m=mig(j);allowMass();save(m);setS(m.school);toast('Data berhasil dipulihkan.')}catch(err){toast('File cadangan tidak valid.')}}}/></label></div></div></div>;
 }
 
 // ===================== SINKRONISASI CLOUD (Firebase Realtime Database via REST) =====================
@@ -449,7 +454,11 @@ async function fbCall(ep,body){const r=await fetch('https://identitytoolkit.goog
 async function fbRefresh(rt){const r=await fetch('https://securetoken.googleapis.com/v1/token?key='+FB_API_KEY,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'grant_type=refresh_token&refresh_token='+encodeURIComponent(rt)});const j=await r.json();if(!r.ok)throw new Error((j.error&&j.error.message)||'ERR');return{token:j.id_token,rt:j.refresh_token}}
 const saveAuth=a=>{try{a?localStorage.setItem(AUTHK,JSON.stringify({rt:a.rt,email:a.email})):localStorage.removeItem(AUTHK)}catch(e){}};
 const CCOL=['classes','teachers','students'];
+const APP_VER='sinkron-aman 29-10-2026';
 const isO=v=>v&&typeof v==='object'&&!Array.isArray(v);
+// Penghapusan massal hanya boleh bila disengaja (tombol Hapus semua / Reset / Pulihkan). Selain itu ditahan.
+let MASS_OK=0;const allowMass=()=>{MASS_OK=Date.now()+15000};
+const cntKeys=o=>isO(o)?Object.keys(o).length:0;
 function toTree(d){const t={school:d.school||{},att:d.att||{},wa:d.wa||{},jam:d.jam||{}};
   CCOL.forEach(c=>{t[c]={};(d[c]||[]).forEach((x,i)=>{const {pass,user,...y}=x;t[c][x.id]={...y,_i:i}})});return t}
 function fromTree(t){t=t||{};const d={school:t.school||{},att:t.att||{},wa:t.wa||{},jam:t.jam||{}};
@@ -465,13 +474,22 @@ function setAt(obj,parts,val){if(!parts.length)return val;const o=isO(obj)?{...o
 
 function useCloud(db,setDb,toast,token){
   const url=cloudUrl();const Q=token?('?auth='+token):'';
-  const [st,setSt]=useState(url?'connecting':'off');
+  const [st,setSt]=useState(url?'connecting':'off');const [sy,setSy]=useState(false);
   const R=useRef({last:{},remote:{},pend:0,dirty:false,failed:false,db,timer:null,ready:false});
   R.current.db=db;
   const flush=async()=>{const r=R.current;if(!url||!token||!r.ready)return;
     const cur=toTree(r.db);const out=diff(r.last,cur);
     Object.keys(out).forEach(k=>{const v=out[k];if(isO(v)&&!Object.keys(v).length)delete out[k]});
     if(!Object.keys(out).length)return;
+    const dl=Object.keys(out).filter(k=>out[k]===null);
+    const rec=dl.filter(k=>/^(students|teachers|classes)\/[^/]+$/.test(k)).length,att=dl.filter(k=>/^(att|jam)\/[^/]+$/.test(k)).length;
+    const recTot=cntKeys(r.last.students)+cntKeys(r.last.teachers)+cntKeys(r.last.classes),attTot=cntKeys(r.last.att);
+    if(Date.now()>MASS_OK&&((rec>=3&&rec>=recTot*0.3)||(att>=50&&att>=attTot*0.5))){
+      try{localStorage.setItem(KEY+'_ditahan',JSON.stringify(r.db))}catch(e){}
+      const rd=mig(fromTree(r.remote));
+      if(rd.students.length+rd.teachers.length+cntKeys(rd.att)>0){r.last=toTree(rd);setDb(rd);toast('Penghapusan massal yang tidak disengaja DICEGAH. Data dikembalikan dari cloud.')}
+      else r.last=cur;
+      return}
     r.pend++;
     try{const res=await fetch(url+'/.json'+Q,{method:'PATCH',body:JSON.stringify(out)});if(!res.ok)throw new Error(res.status);
       r.last=cur;r.failed=false;setSt('online')}
@@ -487,20 +505,20 @@ function useCloud(db,setDb,toast,token){
     try{const t=toTree(r.db);const res=await fetch(url+'/.json'+Q,{method:'PATCH',body:JSON.stringify(t)});if(!res.ok)throw 0;r.last=t;r.remote=t;r.ready=true;setSt('online');return true}catch(e){setSt('error');return false}};
   useEffect(()=>{const r=R.current;
     // Logout / belum login: lupakan status sinkron sebelumnya, agar data kosong bawaan tidak dianggap "penghapusan" oleh pengguna.
-    if(!url||!token){r.ready=false;r.last={};r.remote={};r.dirty=false;r.failed=false;clearTimeout(r.timer);clearTimeout(r.deb);return}
+    if(!url||!token){r.ready=false;r.last={};r.remote={};r.dirty=false;r.failed=false;setSy(false);clearTimeout(r.timer);clearTimeout(r.deb);return}
     let es;
     const onData=(path,data,merge)=>{
       const parts=String(path||'/').split('/').filter(Boolean);
       if(merge){Object.keys(data||{}).forEach(k=>{r.remote=setAt(r.remote,[...parts,...k.split('/')],data[k])})}
       else r.remote=parts.length?setAt(r.remote,parts,data):(data||{});
       if(!r.ready){
-        if(data===null&&!parts.length){r.ready=true;r.remote={};forcePush().then(ok=>ok&&toast('Data perangkat ini diunggah ke cloud.'))}
+        if(data===null&&!parts.length){r.ready=true;setSy(true);r.remote={};forcePush().then(ok=>ok&&toast('Data perangkat ini diunggah ke cloud.'))}
         else{
           const rc=r.remote&&r.remote.students?Object.keys(r.remote.students).length:0,lc=(r.db.students||[]).length;
           if(lc>0&&rc===0&&confirm('Data murid di cloud KOSONG, tetapi perangkat ini masih menyimpan '+lc+' murid.\n\nOK = unggah data perangkat ini ke cloud (pulihkan).\nBatal = pakai data cloud (kosong).')){
-            r.ready=true;forcePush().then(ok=>ok&&toast('Data perangkat ini diunggah ke cloud.'));return}
+            r.ready=true;setSy(true);forcePush().then(ok=>ok&&toast('Data perangkat ini diunggah ke cloud.'));return}
           if(lc>0){try{localStorage.setItem(KEY+'_prasinkron',JSON.stringify(r.db))}catch(e){}}
-          r.ready=true;r.last=toTree(r.db);apply();setSt('online');toast('Data tersinkron dari cloud.')}
+          r.ready=true;setSy(true);r.last=toTree(r.db);apply();setSt('online');toast('Data tersinkron dari cloud.')}
         return}
       clearTimeout(r.deb);r.deb=setTimeout(apply,120)};
     try{es=new EventSource(url+'/.json'+Q);
@@ -513,7 +531,7 @@ function useCloud(db,setDb,toast,token){
     const onOn=()=>{flush()};window.addEventListener('online',onOn);
     return()=>{es&&es.close();window.removeEventListener('online',onOn);clearTimeout(r.timer);clearTimeout(r.deb)}},[url,token]);
   useEffect(()=>{flush()},[db]);
-  return{status:st,url,forcePush,enabled:!!url}}
+  return{status:st,url,forcePush,enabled:!!url,synced:sy}}
 
 const CLOUD_L={off:['Mode lokal','#94a3b8'],connecting:['Menghubungkan…','#f59e0b'],online:['Tersinkron','#22c55e'],error:['Terputus (dikirim ulang otomatis)','#ef4444']};
 const CloudDot=({cloud})=>{const [l,c]=CLOUD_L[cloud.status]||CLOUD_L.off;return <span className="inline-flex items-center gap-1.5 text-[11px]" title="Status sinkronisasi cloud"><span style={{width:8,height:8,borderRadius:99,background:c,display:'inline-block'}}/>{l}</span>};
@@ -525,7 +543,7 @@ function CloudCard({cloud,toast}){
     toast('Tersimpan. Memuat ulang…');setTimeout(()=>location.reload(),700)};
   const push=async()=>{if(!confirm('Data di cloud akan DITIMPA dengan data di perangkat ini. Lanjutkan?'))return;setBz(true);const ok=await cloud.forcePush();setBz(false);toast(ok?'Data perangkat ini kini menjadi data cloud.':'Gagal mengunggah. Periksa alamat database.')};
   return <div className="card p-5 space-y-3"><div className="flex items-center justify-between gap-2 flex-wrap"><h2 className="font-bold">Sinkronisasi Cloud (antar perangkat)</h2><CloudDot cloud={cloud}/></div>
-    <div className="text-xs text-slate-500">Isi alamat Firebase Realtime Database agar data murid, presensi, guru, dan pengaturan sama di semua perangkat. Kosongkan untuk memakai mode lokal.</div>
+    <div className="text-xs text-slate-500">Isi alamat Firebase Realtime Database agar data murid, presensi, guru, dan pengaturan sama di semua perangkat. Kosongkan untuk memakai mode lokal.</div><div className="text-[11px] text-slate-400">Versi aplikasi: {APP_VER}</div>
     {!fixed&&<div className="flex gap-2 flex-wrap"><input className="inp flex-1" style={{minWidth:220}} placeholder="https://nama-proyek-default-rtdb.firebaseio.com" value={u} onChange={e=>setU(e.target.value)}/><button className="btn bg-blue-600 text-white" onClick={saveUrl}>Simpan & hubungkan</button></div>}
     {cloud.enabled&&<button className="btn bg-amber-50 text-amber-700" disabled={bz} onClick={push}>{bz?'Mengunggah…':'Unggah data perangkat ini ke cloud (timpa)'}</button>}</div>}
 
@@ -535,6 +553,14 @@ function App(){
   const toast=m=>{setMsg(m);setTimeout(()=>setMsg(''),2500)};
   const save=d=>setDb(d);
   const cloud=useCloud(db,setDb,toast,auth&&auth.token);
+  const [late,setLate]=useState(false);
+  useEffect(()=>{setLate(false);if(!auth||!cloud.enabled||cloud.synced)return;const t=setTimeout(()=>setLate(true),7000);return()=>clearTimeout(t)},[!!auth,cloud.enabled,cloud.synced]);
+  const snapT=useRef(0);
+  useEffect(()=>{if(!db.students.length)return;const now=Date.now();if(now-snapT.current<30*60*1000)return;snapT.current=now;
+    try{const s=JSON.parse(localStorage.getItem(KEY+'_snap')||'[]');const mx=Math.max(0,...s.map(x=>x.n));
+      if(s.length&&db.students.length<mx*0.7)return;
+      s.unshift({t:now,n:db.students.length,a:Object.keys(db.att).length,db});
+      try{localStorage.setItem(KEY+'_snap',JSON.stringify(s.slice(0,2)))}catch(e){try{localStorage.setItem(KEY+'_snap',JSON.stringify(s.slice(0,1)))}catch(x){}}}catch(e){}},[db]);
   useEffect(()=>{if(!auth)return;const t=setTimeout(()=>{loadFace().catch(()=>{})},2500);return()=>clearTimeout(t)},[!!auth]);
   const doLogin=a=>{saveAuth(a);setAuth(a)};
   useEffect(()=>{let st=null;try{st=JSON.parse(localStorage.getItem(AUTHK))}catch(e){}
@@ -594,10 +620,10 @@ function App(){
   if(pg==='dash')view=<Dashboard db={v}/>;
   if(pg==='abs')view=<Presensi db={v} setAtt={setAtt} setJam={setJam}/>;
   if(pg==='rekap')view=<Rekap db={v} toast={toast}/>;
-  if(pg==='set')view=<Settings db={db} save={save} toast={toast} cloud={cloud}/>;
-  if(pg==='murid')view=<Crud db={db} toast={toast} clearMsg="Seluruh riwayat presensi murid juga ikut terhapus. Data kelas tidak berubah." bk={{file:'backup-murid',sheet:'Data Murid',head:['NIS','Nama','JK','Kelas','Orang Tua','WA'],row:s=>[s.nis,s.name,s.gender,cname(s.classId,db),s.parent||'',s.wa||'']}} onClear={()=>{setDb(d=>({...d,students:[],att:{},wa:{},jam:{}}));toast('Semua data murid dan riwayat presensi dihapus.')}} imp={{run:(r,k)=>importRows('murid',r,k),toast,file:'template-murid.csv',key:'NIS',req:['NIS','Nama','Kelas'],hint:'NIS, Nama, JK (L/P), Kelas/Rombel, Orang Tua, WA',tpl:[['NIS','Nama','JK','Kelas','Orang Tua','WA'],['2601101','Contoh Murid','L','3B','Nama Orang Tua','081234567890']]}} title="Data Murid" items={db.students} cols={[{k:'nis',l:'NIS'},{k:'name',l:'Nama'},{k:'gender',l:'L/P'},{k:'classId',l:'Kelas',f:(i,d)=>cname(i.classId,d)},{k:'wa',l:'WA Orang Tua'},{k:'face',l:'Wajah',f:i=>i.face?'✓':'—'}]} fields={[{k:'nis',l:'NIS'},{k:'name',l:'Nama lengkap'},{k:'gender',l:'Jenis kelamin',opts:()=>[['L','Laki-laki'],['P','Perempuan']]},{k:'classId',l:'Kelas',opts:d=>d.classes.map(k=>[k.id,k.name])},{k:'parent',l:'Nama orang tua / wali',req:false},{k:'wa',l:'No. WhatsApp orang tua (08xx...)',req:false}]} onSave={it=>{if(db.students.some(s=>s.nis===it.nis&&s.id!==it.id)){toast('NIS sudah digunakan.');return false}upsert('students','s')(it)}} onDel={it=>setDb(d=>{const a={...d.att},j={...(d.jam||{})};Object.keys(a).forEach(k=>k.endsWith('|'+it.id)&&delete a[k]);Object.keys(j).forEach(k=>k.endsWith('|'+it.id)&&delete j[k]);return{...d,students:d.students.filter(s=>s.id!==it.id),att:a,jam:j}})}/>;
+  if(pg==='set')view=<><Settings db={db} save={save} toast={toast} cloud={cloud}/><div className="mt-4"><Snap save={save} toast={toast}/></div></>;
+  if(pg==='murid')view=<Crud db={db} toast={toast} clearMsg="Seluruh riwayat presensi murid juga ikut terhapus. Data kelas tidak berubah." bk={{file:'backup-murid',sheet:'Data Murid',head:['NIS','Nama','JK','Kelas','Orang Tua','WA'],row:s=>[s.nis,s.name,s.gender,cname(s.classId,db),s.parent||'',s.wa||'']}} onClear={()=>{allowMass();setDb(d=>({...d,students:[],att:{},wa:{},jam:{}}));toast('Semua data murid dan riwayat presensi dihapus.')}} imp={{run:(r,k)=>importRows('murid',r,k),toast,file:'template-murid.csv',key:'NIS',req:['NIS','Nama','Kelas'],hint:'NIS, Nama, JK (L/P), Kelas/Rombel, Orang Tua, WA',tpl:[['NIS','Nama','JK','Kelas','Orang Tua','WA'],['2601101','Contoh Murid','L','3B','Nama Orang Tua','081234567890']]}} title="Data Murid" items={db.students} cols={[{k:'nis',l:'NIS'},{k:'name',l:'Nama'},{k:'gender',l:'L/P'},{k:'classId',l:'Kelas',f:(i,d)=>cname(i.classId,d)},{k:'wa',l:'WA Orang Tua'},{k:'face',l:'Wajah',f:i=>i.face?'✓':'—'}]} fields={[{k:'nis',l:'NIS'},{k:'name',l:'Nama lengkap'},{k:'gender',l:'Jenis kelamin',opts:()=>[['L','Laki-laki'],['P','Perempuan']]},{k:'classId',l:'Kelas',opts:d=>d.classes.map(k=>[k.id,k.name])},{k:'parent',l:'Nama orang tua / wali',req:false},{k:'wa',l:'No. WhatsApp orang tua (08xx...)',req:false}]} onSave={it=>{if(db.students.some(s=>s.nis===it.nis&&s.id!==it.id)){toast('NIS sudah digunakan.');return false}upsert('students','s')(it)}} onDel={it=>setDb(d=>{const a={...d.att},j={...(d.jam||{})};Object.keys(a).forEach(k=>k.endsWith('|'+it.id)&&delete a[k]);Object.keys(j).forEach(k=>k.endsWith('|'+it.id)&&delete j[k]);return{...d,students:d.students.filter(s=>s.id!==it.id),att:a,jam:j}})}/>;
   if(pg==='kelas')view=<Crud db={db} title="Data Kelas / Rombel" items={db.classes} cols={[{k:'name',l:'Kelas'},{k:'teacherId',l:'Wali Kelas',f:(i,d)=>tname(i.teacherId,d)},{k:'jp',l:'Jam Pulang',f:(i,d)=>jpOf(d,i.id)},{k:'n',l:'Jumlah Murid',f:(i,d)=>d.students.filter(s=>s.classId===i.id).length}]} fields={[{k:'name',l:'Nama kelas'},{k:'jamPulang',l:'Jam pulang khusus kelas ini (HH:MM, kosongkan = ikut Pengaturan)',req:false},{k:'teacherId',l:'Wali kelas',req:false,opts:d=>[['','— Belum ada wali —'],...d.teachers.filter(t=>!t.peran||t.peran==='guru_kelas').map(t=>[t.id,t.name])]}]} onSave={it=>{if(it.jamPulang&&!/^\d{2}:\d{2}$/.test(it.jamPulang)){toast('Format jam harus HH:MM, contoh 10:00.');return false}upsert('classes','c')(it)}} onDel={it=>db.students.some(s=>s.classId===it.id)?toast('Kelas masih memiliki murid.'):setDb(d=>({...d,classes:d.classes.filter(k=>k.id!==it.id)}))}/>;
-  if(pg==='guru')view=<Crud db={db} toast={toast} clearMsg="Wali kelas di semua kelas dikosongkan. Akun admin tidak terpengaruh." bk={{file:'backup-guru',sheet:'Data Guru',head:['NIP','Nama','Tugas','Email','Kelas'],row:t=>[t.nip,t.name,t.subject||'',t.email||'',t.rombel?cname(t.rombel,db):'']}} onClear={()=>{setDb(d=>({...d,teachers:[],classes:d.classes.map(k=>({...k,teacherId:''}))}));toast('Semua data guru dihapus.')}} imp={{run:(r,k)=>importRows('guru',r,k),toast,file:'template-guru.csv',key:'NIP',req:['NIP','Nama'],hint:'NIP, Nama, Tugas, Email, Kelas/Rombel (wali)',tpl:[['NIP','Nama','Tugas','Email','Kelas'],['198010001','Contoh Guru, S.Pd','Guru Kelas 3','guru@contoh.com','3B']]}} title="Data Guru" items={db.teachers.map(t=>({...t,kelas:kls(t),rombel:(db.classes.find(k=>k.teacherId===t.id)||{}).id||''}))} cols={[{k:'name',l:'Nama'},{k:'nip',l:'NIP'},{k:'peran',l:'Peran',f:i=>PERAN[i.peran||'guru_kelas']||'-'},{k:'subject',l:'Tugas'},{k:'kelas',l:'Kelas',f:i=>i.kelas||'-'}]} fields={[{k:'name',l:'Nama lengkap'},{k:'nip',l:'NIP'},{k:'email',l:'Email akun login (sama dengan di Firebase)'},{k:'peran',l:'Peran',opts:()=>Object.keys(PERAN).map(k=>[k,PERAN[k]])},{k:'subject',l:'Tugas / mata pelajaran'},{k:'kelas',l:'Kelas',req:false,ph:'Contoh: 1A  (guru mapel boleh lebih dari satu: 1A, 1B, 2A)'}]} onSave={it=>{const {kelas,rombel:_r,kelas:_k,...t}=it;const id=t.id||('t'+Date.now().toString(36)+Math.floor(Math.random()*99));
+  if(pg==='guru')view=<Crud db={db} toast={toast} clearMsg="Wali kelas di semua kelas dikosongkan. Akun admin tidak terpengaruh." bk={{file:'backup-guru',sheet:'Data Guru',head:['NIP','Nama','Tugas','Email','Kelas'],row:t=>[t.nip,t.name,t.subject||'',t.email||'',t.rombel?cname(t.rombel,db):'']}} onClear={()=>{allowMass();setDb(d=>({...d,teachers:[],classes:d.classes.map(k=>({...k,teacherId:''}))}));toast('Semua data guru dihapus.')}} imp={{run:(r,k)=>importRows('guru',r,k),toast,file:'template-guru.csv',key:'NIP',req:['NIP','Nama'],hint:'NIP, Nama, Tugas, Email, Kelas/Rombel (wali)',tpl:[['NIP','Nama','Tugas','Email','Kelas'],['198010001','Contoh Guru, S.Pd','Guru Kelas 3','guru@contoh.com','3B']]}} title="Data Guru" items={db.teachers.map(t=>({...t,kelas:kls(t),rombel:(db.classes.find(k=>k.teacherId===t.id)||{}).id||''}))} cols={[{k:'name',l:'Nama'},{k:'nip',l:'NIP'},{k:'peran',l:'Peran',f:i=>PERAN[i.peran||'guru_kelas']||'-'},{k:'subject',l:'Tugas'},{k:'kelas',l:'Kelas',f:i=>i.kelas||'-'}]} fields={[{k:'name',l:'Nama lengkap'},{k:'nip',l:'NIP'},{k:'email',l:'Email akun login (sama dengan di Firebase)'},{k:'peran',l:'Peran',opts:()=>Object.keys(PERAN).map(k=>[k,PERAN[k]])},{k:'subject',l:'Tugas / mata pelajaran'},{k:'kelas',l:'Kelas',req:false,ph:'Contoh: 1A  (guru mapel boleh lebih dari satu: 1A, 1B, 2A)'}]} onSave={it=>{const {kelas,rombel:_r,kelas:_k,...t}=it;const id=t.id||('t'+Date.now().toString(36)+Math.floor(Math.random()*99));
     setDb(d=>{let cl=[...d.classes];const ids=[];
       String(kelas||'').split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean).forEach(v=>{const n=nk(v).replace(/^kelas/,'');if(!n)return;
         let c=cl.find(k=>nk(k.name).replace(/^kelas/,'')===n);
@@ -616,6 +642,7 @@ function App(){
     <main className="flex-1 min-w-0 p-3 sm:p-6">
       <div className="lg:hidden noprint flex items-center gap-3 mb-3"><button className="btn bg-white" onClick={()=>setOpen(true)}><Ic n="menu"/></button><Logo s={32}/><b className="text-sm">{db.school.name}</b><span className="ml-auto"><CloudDot cloud={cloud}/></span></div>
       {me.role==='guru'&&mine&&!mine.length&&<div className="card p-4 mb-3 text-sm" style={{background:'#fef3c7',color:'#92400e'}}>Akun ini belum menjadi wali kelas atau pengampu kelas mana pun, sehingga belum ada murid yang tampil. Minta admin mengatur wali kelas di Data Kelas, atau kelas yang diampu di Data Guru.</div>}
+      {late&&<div className="rounded-xl p-3 text-sm mb-3" style={{background:'#fef3c7',color:'#92400e'}}>Data belum bisa dimuat dari cloud. <b>Data Anda tidak terhapus.</b> Periksa koneksi internet, atau minta admin memeriksa hak akses akun ini di Firebase (aturan Realtime Database). Selama belum tersambung, perubahan tidak dikirim ke cloud.</div>}
       {view}
       <footer className="noprint text-center text-xs text-slate-400 mt-6">{db.school.name} · NPSN {db.school.npsn} · {db.school.address} · {db.school.email} · {db.school.phone}</footer></main>
     {msg&&<div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-sm rounded-xl px-4 py-2 noprint">{msg}</div>}</div>;
